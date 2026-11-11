@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดตารางเรียนออนไลน์ (Online Schedule Manager)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Kanit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Font & Lucide Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2canvas for Image Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Kanit', 'Inter', sans-serif;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .shadow-lg, .shadow-md, .shadow-sm, .shadow {
+                box-shadow: none !important;
+            }
+            .border {
+                border-color: #e5e7eb !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <!-- Navbar / Header -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 no-print transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-brand-500 text-white rounded-xl shadow-md">
+                    <i data-lucide="calendar" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight sm:text-xl text-slate-900 dark:text-white">ระบบจัดตารางเรียนออนไลน์</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Interactive Timetable & Conflict Detection</p>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Notification Toggle Button -->
+                <button id="notifToggleBtn" onclick="toggleNotifications()" title="เปิด/ปิด การแจ้งเตือนเตือนเรียน" class="flex items-center space-x-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-xl transition">
+                    <i data-lucide="bell" id="bellIcon" class="w-4 h-4 text-slate-500"></i>
+                    <span id="notifStatusText" class="hidden sm:inline">เปิดแจ้งเตือน</span>
+                </button>
+
+                <button id="addSubjectBtn" onclick="openModal()" class="flex items-center space-x-1.5 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium text-sm rounded-xl shadow-sm transition">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">เพิ่มวิชาเรียน</span>
+                </button>
+                
+                <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+                <button onclick="toggleWeekend()" id="weekendToggleBtn" title="เปิด/ปิด วันเสาร์-อาทิตย์" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                    <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                </button>
+
+                <button onclick="exportData()" title="ส่งออกข้อมูล (Backup)" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                </button>
+
+                <label title="นำเข้าข้อมูล (Restore)" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer">
+                    <i data-lucide="upload" class="w-5 h-5"></i>
+                    <input type="file" id="importFile" onchange="importData(event)" accept=".json" class="hidden">
+                </label>
+
+                <button onclick="printSchedule()" title="พิมพ์ / บันทึกเป็น PDF" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                    <i data-lucide="printer" class="w-5 h-5"></i>
+                </button>
+
+                <button onclick="toggleDarkMode()" id="darkModeBtn" title="สลับธีม สว่าง/มืด" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                    <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        <!-- Printable Header (Only visible when printing) -->
+        <div class="hidden print-only mb-6 text-center">
+            <h1 class="text-2xl font-bold">ตารางเรียนประจำภาคเรียน</h1>
+            <p class="text-sm text-slate-600">สร้างด้วย ระบบจัดตารางเรียนออนไลน์</p>
+        </div>
+
+        <!-- Controls & Filter Bar -->
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 no-print flex flex-col md:flex-row gap-4 items-center justify-between">
+            <!-- Search Input -->
+            <div class="relative w-full md:w-72">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="ค้นหาวิชา หรือ ชื่อผู้สอน..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl pl-9 pr-3 py-1.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+            </div>
+
+            <div class="flex items-center space-x-3 flex-wrap gap-y-2 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center space-x-2 text-sm">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">แจ้งเตือนล่วงหน้า:</span>
+                    <select id="notifLeadTimeSelect" onchange="updateNotifSettings()" class="bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-brand-500">
+                        <option value="5">5 นาที</option>
+                        <option value="10" selected>10 นาที</option>
+                        <option value="15">15 นาที</option>
+                    </select>
+                    <button onclick="playAlertSound()" title="ทดสอบเสียงแจ้งเตือน" class="p-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition">
+                        <i data-lucide="volume-2" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="toggleNotifHelpModal()" title="วิธีเปิดแจ้งเตือนบนมือถือ" class="p-1.5 bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-brand-600 dark:text-brand-300 rounded-lg transition font-medium text-xs flex items-center space-x-1">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">วิธีตั้งค่า</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Grid Container -->
+        <div id="scheduleContainer" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors duration-200">
+            <div class="overflow-x-auto">
+                <div class="min-w-[768px] grid" id="gridWrapper">
+                    <!-- Grid rendered via JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Subjects List Table / Cards -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 no-print">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-brand-500"></i>
+                    <span>รายการวิชาเรียนทั้งหมด (<span id="subjectCount">0</span>)</span>
+                </h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 font-medium">
+                        <tr>
+                            <th class="p-3 rounded-l-xl">รหัสวิชา & ชื่อวิชา</th>
+                            <th class="p-3">วัน & เวลา</th>
+                            <th class="p-3">ห้องเรียน</th>
+                            <th class="p-3">ผู้สอน</th>
+                            <th class="p-3">บันทึกเพิ่มเติม</th>
+                            <th class="p-3 text-right rounded-r-xl">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subjectListTable" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form (Add / Edit Subject) -->
+    <div id="subjectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200 p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200 border border-slate-200 dark:border-slate-700">
+            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <h3 id="modalTitle" class="font-bold text-lg text-slate-800 dark:text-slate-100">เพิ่มวิชาเรียน</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="subjectForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="subjectId">
+                <input type="hidden" id="selectedColor">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">รหัสวิชา & ชื่อวิชา *</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="subjectCode" placeholder="รหัสวิชา" required class="col-span-1 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        <input type="text" id="subjectName" placeholder="ชื่อวิชาเรียน" required class="col-span-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">ห้องเรียน</label>
+                        <input type="text" id="room" placeholder="เช่น 501, Lab1" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">ผู้สอน</label>
+                        <input type="text" id="teacher" placeholder="ชื่ออาจารย์" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">วันในสัปดาห์ *</label>
+                    <select id="dayOfWeek" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        <option value="1">วันจันทร์</option>
+                        <option value="2">วันอังคาร</option>
+                        <option value="3">วันพุธ</option>
+                        <option value="4">วันพฤหัสบดี</option>
+                        <option value="5">วันศุกร์</option>
+                        <option value="6">วันเสาร์</option>
+                        <option value="0">วันอาทิตย์</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">เวลาเริ่ม *</label>
+                        <input type="time" id="startTime" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">เวลาสิ้นสุด *</label>
+                        <input type="time" id="endTime" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">เลือกสีวิชา</label>
+                    <div id="colorPickerOptions" class="flex items-center space-x-2 pt-1"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">บันทึกเพิ่มเติม</label>
+                    <textarea id="notes" rows="2" placeholder="เกณฑ์คะแนน, ช่องทางเรียน ฯลฯ" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-xl shadow-sm transition">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Instructions for Mobile Notification -->
+    <div id="notifHelpModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200 p-4 no-print">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-200 border border-slate-200 dark:border-slate-700">
+            <div class="px-6 py-4 bg-brand-500 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg flex items-center space-x-2">
+                    <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                    <span>วิธีเปิดแจ้งเตือนบนมือถือ</span>
+                </h3>
+                <button onclick="toggleNotifHelpModal()" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-sm text-slate-700 dark:text-slate-200 overflow-y-auto max-h-[70vh]">
+                <div class="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300 flex items-start space-x-2">
+                    <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+                    <span>การแจ้งเตือนจะทำงานโดยส่ง Push Notification และเสียงแจ้งเตือนล่วงหน้าก่อนถึงเวลาเรียนตามที่คุณเลือก (5, 10 หรือ 15 นาที)</span>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
+                        <span class="bg-slate-100 dark:bg-slate-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">1</span>
+                        <span>มือถือระบบ Android (Chrome / Firefox / Edge):</span>
+                    </div>
+                    <ul class="list-disc pl-8 space-y-1 text-xs text-slate-600 dark:text-slate-300">
+                        <li>กดปุ่ม <span class="font-semibold text-brand-600 dark:text-brand-400">"เปิดแจ้งเตือน"</span> ด้านบนขวาของเว็บ</li>
+                        <li>เมื่อหน้าต่างป๊อปอัพของเบราว์เซอร์เด้งขึ้นมา ให้กด <span class="font-semibold text-emerald-600">"อนุญาต (Allow)"</span></li>
+                    </ul>
+
+                    <div class="font-bold text-slate-900 dark:text-white flex items-center space-x-1.5 pt-2">
+                        <span class="bg-slate-100 dark:bg-slate-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2</span>
+                        <span>มือถือ iPhone / iPad (iOS 16.4 ขึ้นไป):</span>
+                    </div>
+                    <ul class="list-disc pl-8 space-y-1 text-xs text-slate-600 dark:text-slate-300">
+                        <li>เปิดเว็บด้วยแอป <span class="font-semibold">Safari</span></li>
+                        <li>กดปุ่ม <span class="font-semibold text-brand-600">"แชร์ (Share)"</span> ด้านล่างของ Safari</li>
+                        <li>เลือก <span class="font-semibold text-brand-600">"เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"</span></li>
+                        <li>เปิดแอปจากไอคอนบนหน้าจอโฮม แล้วกดปุ่ม <span class="font-semibold text-brand-600">"เปิดแจ้งเตือน"</span> และตอบ <span class="font-semibold text-emerald-600">"อนุญาต"</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="px-6 py-3 bg-slate-50 dark:bg-slate-700/50 border-t border-slate-200 dark:border-slate-700 text-right">
+                <button onclick="toggleNotifHelpModal()" class="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-semibold hover:bg-brand-700 transition">เข้าใจแล้ว</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 no-print"></div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // Data Structure & Initial State
+        const DAYS_MAP = [
+            { id: 1, name: 'จันทร์', fullname: 'วันจันทร์', color: 'bg-yellow-500' },
+            { id: 2, name: 'อังคาร', fullname: 'วันอังคาร', color: 'bg-pink-500' },
+            { id: 3, name: 'พุธ', fullname: 'วันพุธ', color: 'bg-emerald-500' },
+            { id: 4, name: 'พฤหัสบดี', fullname: 'วันพฤหัสบดี', color: 'bg-orange-500' },
+            { id: 5, name: 'ศุกร์', fullname: 'วันศุกร์', color: 'bg-blue-500' },
+            { id: 6, name: 'เสาร์', fullname: 'วันเสาร์', color: 'bg-purple-500' },
+            { id: 0, name: 'อาทิตย์', fullname: 'วันอาทิตย์', color: 'bg-red-500' }
+        ];
+
+        const COLOR_PRESETS = [
+            '#3b82f6', // Blue
+            '#10b981', // Emerald
+            '#f59e0b', // Amber
+            '#ef4444', // Red
+            '#8b5cf6', // Purple
+            '#ec4899', // Pink
+            '#06b6d4', // Cyan
+            '#84cc16'  // Lime
+        ];
+
+        const SLOT_HEIGHT = 80; // Height per hour in pixels
+
+        let state = {
+            subjects: [],
+            searchQuery: '',
+            startHour: 8,
+            endHour: 18,
+            showWeekend: false,
+            darkMode: false,
+            notificationsEnabled: false,
+            notifLeadTime: 10, // minutes
+            notifiedLogs: {} // Stores timestamp string keys to avoid duplicated alerts
+        };
+
+        // Initialize App on DOM Loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStateFromLocalStorage();
+            applyTheme();
+            initColorPicker();
+            initNotifications();
+            renderSchedule();
+            renderSubjectList();
+
+            // Unlock Web Audio API on first user interaction (Mobile autoplay bypass)
+            const unlockAudio = () => {
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                } else if (!audioCtx) {
+                    try {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    } catch (e) {}
+                }
+                document.removeEventListener('click', unlockAudio);
+                document.removeEventListener('touchstart', unlockAudio);
+            };
+            document.addEventListener('click', unlockAudio);
+            document.addEventListener('touchstart', unlockAudio);
+
+            // Background checker for notifications every 30s
+            setInterval(checkUpcomingClasses, 30000);
+            checkUpcomingClasses();
+        });
+
+        function initIcons() {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function toggleNotifHelpModal() {
+            const modal = document.getElementById('notifHelpModal');
+            if (!modal) return;
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modal.querySelector('div').classList.remove('scale-95');
+                }, 10);
+            } else {
+                modal.classList.add('opacity-0');
+                modal.querySelector('div').classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 200);
+            }
+        }
+
+        // Color Picker Init & Handler
+        function initColorPicker() {
+            const container = document.getElementById('colorPickerOptions');
+            if (!container) return;
+            container.innerHTML = '';
+            COLOR_PRESETS.forEach((color, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `color-option w-7 h-7 rounded-full border-2 transition-transform transform hover:scale-110 ${idx === 0 ? 'border-slate-900 dark:border-white scale-110' : 'border-transparent'}`;
+                btn.style.backgroundColor = color;
+                btn.onclick = () => selectColor(color, btn);
+                container.appendChild(btn);
+            });
+            document.getElementById('selectedColor').value = COLOR_PRESETS[0];
+        }
+
+        function selectColor(color, element) {
+            document.querySelectorAll('.color-option').forEach(btn => {
+                btn.classList.remove('border-slate-900', 'dark:border-white', 'scale-110');
+                btn.classList.add('border-transparent');
+            });
+            element.classList.add('border-slate-900', 'dark:border-white', 'scale-110');
+            element.classList.remove('border-transparent');
+            document.getElementById('selectedColor').value = color;
+        }
+
+        // Time Select Options Render
+        function renderTimeSelects() {
+            const startSelect = document.getElementById('startHourSelect');
+            const endSelect = document.getElementById('endHourSelect');
+            if (!startSelect || !endSelect) return;
+
+            startSelect.innerHTML = '';
+            endSelect.innerHTML = '';
+
+            for (let h = 6; h <= 14; h++) {
+                const opt = document.createElement('option');
+                opt.value = h;
+                opt.innerText = `${h.toString().padStart(2, '0')}:00`;
+                if (h === state.startHour) opt.selected = true;
+                startSelect.appendChild(opt);
+            }
+
+            for (let h = 12; h <= 23; h++) {
+                const opt = document.createElement('option');
+                opt.value = h;
+                opt.innerText = `${h.toString().padStart(2, '0')}:00`;
+                if (h === state.endHour) opt.selected = true;
+                endSelect.appendChild(opt);
+            }
+        }
+
+        function updateTimeRange() {
+            const start = parseInt(document.getElementById('startHourSelect').value);
+            const end = parseInt(document.getElementById('endHourSelect').value);
+
+            if (start >= end) {
+                showToast('เวลาเริ่มต้นต้องน้อยกว่าเวลาสิ้นสุด', 'error');
+                renderTimeSelects();
+                return;
+            }
+
+            state.startHour = start;
+            state.endHour = end;
+            saveStateToLocalStorage();
+            renderSchedule();
+        }
+
+        function toggleWeekend() {
+            state.showWeekend = !state.showWeekend;
+            saveStateToLocalStorage();
+            renderSchedule();
+            showToast(state.showWeekend ? 'แสดงวันเสาร์-อาทิตย์' : 'ซ่อนวันเสาร์-อาทิตย์', 'info');
+        }
+
+        function handleSearch() {
+            state.searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+            renderSchedule();
+            renderSubjectList();
+        }
+
+        // Time Utils & Conflict Logic
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function checkConflict(newSubject) {
+            const newStart = timeToMinutes(newSubject.startTime);
+            const newEnd = timeToMinutes(newSubject.endTime);
+
+            return state.subjects.find(s => {
+                if (s.id === newSubject.id || s.day !== newSubject.day) return false;
+                const sStart = timeToMinutes(s.startTime);
+                const sEnd = timeToMinutes(s.endTime);
+                return Math.max(newStart, sStart) < Math.min(newEnd, sEnd);
+            });
+        }
+
+        function getConflictingSubjectIds() {
+            const conflictingIds = new Set();
+            for (let i = 0; i < state.subjects.length; i++) {
+                for (let j = i + 1; j < state.subjects.length; j++) {
+                    const a = state.subjects[i];
+                    const b = state.subjects[j];
+                    if (a.day === b.day) {
+                        const aStart = timeToMinutes(a.startTime);
+                        const aEnd = timeToMinutes(a.endTime);
+                        const bStart = timeToMinutes(b.startTime);
+                        const bEnd = timeToMinutes(b.endTime);
+
+                        if (Math.max(aStart, bStart) < Math.min(aEnd, bEnd)) {
+                            conflictingIds.add(a.id);
+                            conflictingIds.add(b.id);
+                        }
+                    }
+                }
+            }
+            return conflictingIds;
+        }
+
+        // Notification Functions
+        function initNotifications() {
+            updateNotifUI();
+        }
+
+        function toggleNotifications() {
+            if (!("Notification" in window)) {
+                showToast('เบราว์เซอร์นี้ไม่รองรับระบบการแจ้งเตือน', 'error');
+                return;
+            }
+
+            if (Notification.permission === "granted") {
+                state.notificationsEnabled = !state.notificationsEnabled;
+                saveStateToLocalStorage();
+                updateNotifUI();
+                showToast(state.notificationsEnabled ? 'เปิดการแจ้งเตือนวิชาเรียนแล้ว' : 'ปิดการแจ้งเตือนเรียบร้อย', 'info');
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        state.notificationsEnabled = true;
+                        saveStateToLocalStorage();
+                        updateNotifUI();
+                        showToast('เปิดการแจ้งเตือนวิชาเรียนแล้ว', 'success');
+                    } else {
+                        showToast('การอนุญาตแจ้งเตือนถูกปฏิเสธ', 'error');
+                    }
+                });
+            } else {
+                showToast('การแจ้งเตือนถูกปิดกั้นในเบราว์เซอร์ของคุณ โปรดเปิดสิทธิ์ในการตั้งค่าเบราว์เซอร์', 'error');
+            }
+        }
+
+        function updateNotifSettings() {
+            const leadTime = parseInt(document.getElementById('notifLeadTimeSelect').value);
+            state.notifLeadTime = leadTime;
+            saveStateToLocalStorage();
+            showToast(`ตั้งเวลาแจ้งเตือนล่วงหน้า ${leadTime} นาที`, 'info');
+        }
+
+        function updateNotifUI() {
+            const btn = document.getElementById('notifToggleBtn');
+            const icon = document.getElementById('bellIcon');
+            const text = document.getElementById('notifStatusText');
+            const select = document.getElementById('notifLeadTimeSelect');
+
+            if (select) select.value = state.notifLeadTime || 10;
+
+            if (state.notificationsEnabled && Notification.permission === "granted") {
+                if (btn) btn.className = 'flex items-center space-x-1.5 px-3 py-2 bg-emerald-100 dark:bg-emerald-950/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-medium text-sm rounded-xl transition';
+                if (icon) {
+                    icon.className = 'w-4 h-4 text-emerald-600 dark:text-emerald-400';
+                }
+                if (text) text.innerText = 'เปิดแจ้งเตือนอยู่';
+            } else {
+                if (btn) btn.className = 'flex items-center space-x-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-xl transition';
+                if (icon) {
+                    icon.className = 'w-4 h-4 text-slate-500';
+                }
+                if (text) text.innerText = 'เปิดแจ้งเตือน';
+            }
+        }
+
+        function checkUpcomingClasses() {
+            if (!state.notificationsEnabled || Notification.permission !== "granted") return;
+
+            const now = new Date();
+            const currentDay = now.getDay();
+            const currentMin = now.getHours() * 60 + now.getMinutes();
+
+            state.subjects.forEach(sub => {
+                if (sub.day !== currentDay) return;
+
+                const startMin = timeToMinutes(sub.startTime);
+                const leadTime = state.notifLeadTime || 10;
+                const diff = startMin - currentMin;
+
+                const logKey = `${now.toISOString().slice(0,10)}_${sub.id}_${diff <= 0 ? 'start' : 'lead'}`;
+
+                if (diff > 0 && diff <= leadTime && !state.notifiedLogs[logKey]) {
+                    sendNotification(`อีก ${diff} นาที: มีเรียนวิชา ${sub.code}`, `${sub.name} (ห้อง ${sub.room || 'ไม่ระบุ'}) เวลา ${sub.startTime} น.`);
+                    playAlertSound();
+                    state.notifiedLogs[logKey] = true;
+                    saveStateToLocalStorage();
+                } else if (diff === 0 && !state.notifiedLogs[logKey]) {
+                    sendNotification(`ถึงเวลาเรียนแล้ว! ${sub.code}`, `${sub.name} (ห้อง ${sub.room || 'ไม่ระบุ'}) เริ่มเรียนเวลา ${sub.startTime} น.`);
+                    playAlertSound();
+                    state.notifiedLogs[logKey] = true;
+                    saveStateToLocalStorage();
+                }
+            });
+        }
+
+        function sendNotification(title, body) {
+            if (Notification.permission === "granted") {
+                new Notification(title, {
+                    body: body,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/2907/2907150.png'
+                });
+            }
+        }
+
+        let audioCtx = null;
+
+        function playAlertSound() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                // Create dual-tone chime sound
+                const playTone = (freq, startTime, duration) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, startTime);
+
+                    gain.gain.setValueAtTime(0.3, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+
+                const now = audioCtx.currentTime;
+                playTone(659.25, now, 0.25);       // E5
+                playTone(880.00, now + 0.15, 0.4); // A5
+                
+                showToast('🔊 ทดสอบเสียงแจ้งเตือนแล้ว', 'info');
+            } catch (e) {
+                console.log('Audio playback prevented or not supported', e);
+            }
+        }
+
+        // LocalStorage Management
+        function saveStateToLocalStorage() {
+            try {
+                localStorage.setItem('online_schedule_state', JSON.stringify(state));
+            } catch (e) {
+                console.error('Failed to save state to localStorage', e);
+            }
+        }
+
+        function loadStateFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('online_schedule_state');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                }
+            } catch (e) {
+                console.error('Failed to load state from localStorage', e);
+            }
+        }
+
+        // Render Schedule Grid with Precise Day Column Alignment
+        function renderSchedule() {
+            const gridWrapper = document.getElementById('gridWrapper');
+            const activeDays = state.showWeekend 
+                ? DAYS_MAP 
+                : DAYS_MAP.filter(d => d.id !== 6 && d.id !== 0);
+
+            const totalHours = state.endHour - state.startHour;
+            const conflictIds = getConflictingSubjectIds();
+
+            gridWrapper.style.gridTemplateColumns = `80px repeat(${activeDays.length}, minmax(0, 1fr))`;
+            gridWrapper.innerHTML = '';
+
+            // 1. Header Row (Corner + Days)
+            const corner = document.createElement('div');
+            corner.className = 'p-3 text-center border-b border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 sticky left-0 z-20 h-[45px] flex items-center justify-center';
+            corner.innerText = 'เวลา / วัน';
+            gridWrapper.appendChild(corner);
+
+            activeDays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'p-3 text-center border-b border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-sm text-slate-700 dark:text-slate-200 flex items-center justify-center space-x-1.5 h-[45px]';
+                dayHeader.innerHTML = `
+                    <span class="w-2.5 h-2.5 rounded-full ${day.color}"></span>
+                    <span>${day.name}</span>
+                `;
+                gridWrapper.appendChild(dayHeader);
+            });
+
+            // 2. Time Column (Left fixed column)
+            const timeCol = document.createElement('div');
+            timeCol.className = 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700';
+            for (let h = state.startHour; h < state.endHour; h++) {
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'p-2 text-center border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center justify-center';
+                timeLabel.style.height = `${SLOT_HEIGHT}px`;
+                timeLabel.innerText = `${h.toString().padStart(2, '0')}:00`;
+                timeCol.appendChild(timeLabel);
+            }
+            gridWrapper.appendChild(timeCol);
+
+            // 3. Day Columns (Grid Bodies)
+            const gridStartMinutes = state.startHour * 60;
+            const gridEndMinutes = state.endHour * 60;
+
+            const filteredSubjects = state.subjects.filter(s => {
+                if (!state.searchQuery) return true;
+                return s.name.toLowerCase().includes(state.searchQuery) ||
+                       s.code.toLowerCase().includes(state.searchQuery) ||
+                       (s.teacher && s.teacher.toLowerCase().includes(state.searchQuery));
+            });
+
+            activeDays.forEach(day => {
+                const dayCol = document.createElement('div');
+                dayCol.className = 'relative border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50';
+                dayCol.style.height = `${totalHours * SLOT_HEIGHT}px`;
+
+                // Draw hourly background lines
+                for (let h = state.startHour; h < state.endHour; h++) {
+                    const slotBg = document.createElement('div');
+                    slotBg.className = 'border-b border-slate-100 dark:border-slate-700/50 transition hover:bg-slate-50/60 dark:hover:bg-slate-700/20 cursor-pointer';
+                    slotBg.style.height = `${SLOT_HEIGHT}px`;
+                    slotBg.onclick = (e) => {
+                        if (e.target === slotBg) openModalForSlot(day.id, h);
+                    };
+                    dayCol.appendChild(slotBg);
+                }
+
+                // Filter subjects for this specific day
+                const daySubjects = filteredSubjects.filter(s => s.day === day.id);
+
+                daySubjects.forEach(subject => {
+                    const subStartMin = timeToMinutes(subject.startTime);
+                    const subEndMin = timeToMinutes(subject.endTime);
+
+                    if (subEndMin <= gridStartMinutes || subStartMin >= gridEndMinutes) return;
+
+                    const clampedStart = Math.max(subStartMin, gridStartMinutes);
+                    const clampedEnd = Math.min(subEndMin, gridEndMinutes);
+
+                    const startOffsetMinutes = clampedStart - gridStartMinutes;
+                    const durationMinutes = clampedEnd - clampedStart;
+
+                    const pixelsPerMinute = SLOT_HEIGHT / 60;
+                    const topPx = startOffsetMinutes * pixelsPerMinute;
+                    const heightPx = Math.max(durationMinutes * pixelsPerMinute - 3, 26);
+
+                    const isConflicting = conflictIds.has(subject.id);
+
+                    const card = document.createElement('div');
+                    card.className = `absolute left-1 right-1 rounded-xl p-2 sm:p-2.5 text-white shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-0.5 border flex flex-col justify-between z-10 ${isConflicting ? 'ring-2 ring-red-500 border-red-400' : 'border-white/20'}`;
+                    card.style.top = `${topPx + 1}px`;
+                    card.style.height = `${heightPx}px`;
+                    card.style.backgroundColor = subject.color;
+
+                    card.innerHTML = `
+                        <div class="overflow-hidden">
+                            <div class="flex justify-between items-start leading-tight mb-0.5">
+                                <div class="flex items-center space-x-1 overflow-hidden">
+                                    <span class="font-bold text-xs sm:text-sm tracking-tight truncate">${subject.code}</span>
+                                    ${isConflicting ? '<i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-200 animate-pulse flex-shrink-0"></i>' : ''}
+                                </div>
+                                <span class="text-[10px] bg-black/20 px-1.5 py-0.5 rounded-md font-mono flex-shrink-0 ml-1">${subject.startTime}-${subject.endTime}</span>
+                            </div>
+                            <h4 class="font-semibold text-xs sm:text-sm line-clamp-1 leading-tight">${subject.name}</h4>
+                        </div>
+                        ${heightPx > 45 ? `
+                        <div class="text-[11px] opacity-90 flex justify-between items-end mt-1 pt-1 border-t border-white/20">
+                            <span class="truncate">${subject.room ? '📍 ' + subject.room : ''}</span>
+                            <span class="truncate font-light text-right ml-1">${subject.teacher || ''}</span>
+                        </div>` : ''}
+                    `;
+
+                    card.onclick = (e) => {
+                        e.stopPropagation();
+                        openModal(subject);
+                    };
+
+                    dayCol.appendChild(card);
+                });
+
+                gridWrapper.appendChild(dayCol);
+            });
+
+            initIcons();
+        }
+
+        // Subject Table Rendering
+        function renderSubjectList() {
+            const tableBody = document.getElementById('subjectListTable');
+            const conflictIds = getConflictingSubjectIds();
+
+            const filteredSubjects = state.subjects.filter(s => {
+                if (!state.searchQuery) return true;
+                return s.name.toLowerCase().includes(state.searchQuery) ||
+                       s.code.toLowerCase().includes(state.searchQuery) ||
+                       (s.teacher && s.teacher.toLowerCase().includes(state.searchQuery));
+            });
+
+            document.getElementById('subjectCount').innerText = filteredSubjects.length;
+            tableBody.innerHTML = '';
+
+            if (filteredSubjects.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-slate-400 dark:text-slate-500">
+                            ${state.searchQuery ? 'ไม่พบวิชาเรียนที่ตรงกับการค้นหา' : 'ยังไม่มีข้อมูลวิชาเรียน กดปุ่ม "เพิ่มวิชาเรียน" ด้านบนเพื่อเริ่มบันทึก'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const sorted = [...filteredSubjects].sort((a, b) => {
+                if (a.day !== b.day) return a.day - b.day;
+                return a.startTime.localeCompare(b.startTime);
+            });
+
+            sorted.forEach(sub => {
+                const dayObj = DAYS_MAP.find(d => d.id === sub.day);
+                const tr = document.createElement('tr');
+                const isConflicting = conflictIds.has(sub.id);
+
+                tr.className = `hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition ${isConflicting ? 'bg-red-50/50 dark:bg-red-950/20' : ''}`;
+
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <div class="flex items-center space-x-3">
+                            <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${sub.color}"></span>
+                            <div>
+                                <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-1.5">
+                                    <span>${sub.code}</span>
+                                    ${isConflicting ? '<span class="text-[10px] bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-md flex items-center"><i data-lucide="alert-circle" class="w-3 h-3 mr-1"></i>เวลาชนกัน</span>' : ''}
+                                </div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">${sub.name}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-3 text-slate-700 dark:text-slate-300">
+                        <span class="font-medium">${dayObj ? dayObj.fullname : ''}</span>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">${sub.startTime} - ${sub.endTime} น.</div>
+                    </td>
+                    <td class="p-3 text-slate-600 dark:text-slate-400">${sub.room || '-'}</td>
+                    <td class="p-3 text-slate-600 dark:text-slate-400">${sub.teacher || '-'}</td>
+                    <td class="p-3 text-slate-500 dark:text-slate-400 text-xs max-w-xs truncate">${sub.notes || '-'}</td>
+                    <td class="p-3 text-right space-x-1">
+                        <button onclick='openModal(${JSON.stringify(sub).replace(/'/g, "&apos;")})' class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteSubject('${sub.id}')" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            initIcons();
+        }
+
+        // Modal Handlers
+        function openModal(subject = null) {
+            const modal = document.getElementById('subjectModal');
+            const form = document.getElementById('subjectForm');
+            const title = document.getElementById('modalTitle');
+
+            form.reset();
+
+            if (subject) {
+                title.innerText = 'แก้ไขวิชาเรียน';
+                document.getElementById('subjectId').value = subject.id;
+                document.getElementById('subjectCode').value = subject.code;
+                document.getElementById('subjectName').value = subject.name;
+                document.getElementById('teacher').value = subject.teacher || '';
+                document.getElementById('room').value = subject.room || '';
+                document.getElementById('dayOfWeek').value = subject.day;
+                document.getElementById('startTime').value = subject.startTime;
+                document.getElementById('endTime').value = subject.endTime;
+                document.getElementById('notes').value = subject.notes || '';
+                
+                const colorBtn = Array.from(document.querySelectorAll('.color-option'))
+                    .find(b => b.style.backgroundColor === subject.color);
+                if (colorBtn) selectColor(subject.color, colorBtn);
+            } else {
+                title.innerText = 'เพิ่มวิชาเรียน';
+                document.getElementById('subjectId').value = '';
+                document.getElementById('startTime').value = '09:00';
+                document.getElementById('endTime').value = '12:00';
+                document.getElementById('notes').value = '';
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function openModalForSlot(dayId, hour) {
+            openModal();
+            document.getElementById('dayOfWeek').value = dayId;
+            const startStr = `${hour.toString().padStart(2, '0')}:00`;
+            const endStr = `${(hour + 1).toString().padStart(2, '0')}:00`;
+            document.getElementById('startTime').value = startStr;
+            document.getElementById('endTime').value = endStr;
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('subjectModal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        // Save Subject (Add/Edit)
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('subjectId').value;
+            const code = document.getElementById('subjectCode').value.trim();
+            const name = document.getElementById('subjectName').value.trim();
+            const teacher = document.getElementById('teacher').value.trim();
+            const room = document.getElementById('room').value.trim();
+            const day = parseInt(document.getElementById('dayOfWeek').value);
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const notes = document.getElementById('notes').value.trim();
+            const color = document.getElementById('selectedColor').value;
+
+            if (startTime >= endTime) {
+                showToast('เวลาเริ่มต้นต้องน้อยกว่าเวลาสิ้นสุด', 'error');
+                return;
+            }
+
+            const subjectData = {
+                id: id || Date.now().toString(),
+                code,
+                name,
+                teacher,
+                room,
+                day,
+                startTime,
+                endTime,
+                notes,
+                color
+            };
+
+            // Check overlap conflict
+            const conflict = checkConflict(subjectData);
+            if (conflict) {
+                showToast(`⚠️ เวลาชนกับวิชา ${conflict.code} (${conflict.startTime}-${conflict.endTime})`, 'error');
+            }
+
+            if (id) {
+                const index = state.subjects.findIndex(s => s.id === id);
+                if (index !== -1) state.subjects[index] = subjectData;
+                showToast('อัปเดตวิชาเรียนเรียบร้อย', 'success');
+            } else {
+                state.subjects.push(subjectData);
+                showToast('เพิ่มวิชาเรียนเรียบร้อย', 'success');
+            }
+
+            saveStateToLocalStorage();
+            renderSchedule();
+            renderSubjectList();
+            closeModal();
+        }
+
+        // Delete Subject
+        function deleteSubject(id) {
+            state.subjects = state.subjects.filter(s => s.id !== id);
+            saveStateToLocalStorage();
+            renderSchedule();
+            renderSubjectList();
+            showToast('ลบวิชาเรียนเรียบร้อย', 'info');
+        }
+
+        // Clear All Data
+        function clearAllSubjects() {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลวิชาเรียนทั้งหมด?')) {
+                state.subjects = [];
+                saveStateToLocalStorage();
+                renderSchedule();
+                renderSubjectList();
+                showToast('ล้างข้อมูลวิชาเรียนทั้งหมดแล้ว', 'info');
+            }
+        }
+
+        // Export & Import Data JSON
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `school_schedule_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('ส่งออกไฟล์ข้อมูลสำรองแล้ว', 'success');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    if (importedState && Array.isArray(importedState.subjects)) {
+                        state = { ...state, ...importedState };
+                        saveStateToLocalStorage();
+                        renderTimeSelects();
+                        renderSchedule();
+                        renderSubjectList();
+                        showToast('นำเข้าข้อมูลตารางเรียนสำเร็จ', 'success');
+                    } else {
+                        showToast('รูปแบบไฟล์ไม่ถูกต้อง', 'error');
+                    }
+                } catch (err) {
+                    showToast('เกิดข้อผิดพลาดในการนำเข้าไฟล์', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Print & Image Download
+        function printSchedule() {
+            window.print();
+        }
+
+        function exportAsImage() {
+            showToast('กำลังประมวลผลรูปภาพ...', 'info');
+            const target = document.getElementById('scheduleContainer');
+            html2canvas(target, {
+                scale: 2,
+                backgroundColor: state.darkMode ? '#1e293b' : '#ffffff'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `schedule_${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('ดาวน์โหลดรูปภาพตารางเรียนสำเร็จ', 'success');
+            }).catch(() => {
+                showToast('ไม่สามารถบันทึกภาพได้', 'error');
+            });
+        }
+
+        // Dark Mode Toggle
+        function toggleDarkMode() {
+            state.darkMode = !state.darkMode;
+            saveStateToLocalStorage();
+            applyTheme();
+        }
+
+        function applyTheme() {
+            if (state.darkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-red-600 text-white',
+                info: 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800'
+            };
+
+            toast.className = `flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${bgColors[type] || bgColors.info}`;
+            toast.innerHTML = `<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
