@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <!-- ล็อกหน้าจอไม่ให้ซูมเข้า-ออก และให้พอดีกับขอบจอมือถือ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>ระบบจัดตารางเรียนออนไลน์</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Kanit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Font & Lucide Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        html, body {
+            font-family: 'Kanit', sans-serif;
+            overflow-x: hidden; /* ป้องกันหน้าเว็บล้นออกด้านข้าง */
+            touch-action: manipulation; /* ป้องกันการดับเบิลแท็ปแล้วซูม */
+            -webkit-tap-highlight-color: transparent;
+        }
+        .schedule-grid-desktop {
+            grid-template-columns: 70px repeat(5, minmax(120px, 1fr));
+        }
+        .schedule-grid-mobile {
+            grid-template-columns: 58px 1fr;
+        }
+        /* ซ่อน Scrollbar แนวนอนของแถบเลือกวันบนมือถือ */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-[100dvh] w-full flex flex-col transition-colors duration-200 select-none">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm w-full">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2.5 shrink-0">
+                <div class="p-2 bg-gradient-to-tr from-brand-600 to-indigo-600 text-white rounded-xl shadow-md shadow-brand-500/20">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold bg-gradient-to-r from-brand-600 to-indigo-600 bg-clip-text text-transparent leading-tight">
+                        ตารางเรียน
+                    </h1>
+                    <p class="text-[10px] text-slate-400 hidden sm:block">ระบบจัดตารางเรียน & แจ้งเตือน</p>
+                </div>
+            </div>
+
+            <!-- Controls Toolbar -->
+            <div class="flex items-center gap-1.5 sm:gap-2.5">
+                <!-- Search Input (Desktop) -->
+                <div class="relative hidden lg:block w-52">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="ค้นหาวิชา, ห้อง..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-700/70 border-none rounded-xl focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-slate-100">
+                </div>
+
+                <!-- Advance Notification Selector -->
+                <select id="notifAdvanceSelect" onchange="updateNotifSettings()" class="text-[11px] sm:text-xs bg-slate-100 dark:bg-slate-700 border-none rounded-xl px-2 py-2 font-medium focus:ring-2 focus:ring-brand-500 cursor-pointer max-w-[115px] sm:max-w-none truncate">
+                    <option value="0">⏰ ตรงเวลา</option>
+                    <option value="5">⏰ ล่วงหน้า 5 น.</option>
+                    <option value="10" selected>⏰ ล่วงหน้า 10 น.</option>
+                    <option value="15">⏰ ล่วงหน้า 15 น.</option>
+                </select>
+
+                <!-- Enable Notification Button -->
+                <button id="notifBtn" onclick="toggleNotifications()" title="เปิด/ปิดการแจ้งเตือน" class="flex items-center space-x-1 p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition shrink-0">
+                    <i data-lucide="bell-off" id="notifIcon" class="w-4 h-4"></i>
+                    <span id="notifText" class="hidden md:inline">เปิดแจ้งเตือน</span>
+                </button>
+
+                <!-- Sound Settings Modal Button -->
+                <button onclick="openSoundModal()" title="ตั้งค่าเสียงแจ้งเตือน" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition shrink-0">
+                    <i data-lucide="volume-2" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Dark Mode Toggle -->
+                <button onclick="toggleDarkMode()" title="สลับโหมดมืด/สว่าง" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition shrink-0">
+                    <i data-lucide="moon" id="themeIcon" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Add Subject Button -->
+                <button onclick="openModal()" class="flex items-center space-x-1 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white px-3 py-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition shadow-md shadow-brand-500/20 active:scale-95 shrink-0">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>เพิ่ม</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Schedule Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 flex flex-col gap-3 sm:gap-5">
+
+        <!-- Banner แจ้งเตือนสิทธิ์ -->
+        <div id="notifBanner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 flex items-center justify-between gap-2 text-amber-700 dark:text-amber-300 text-xs">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="bell-ring" class="w-4 h-4 text-amber-500 shrink-0"></i>
+                <span>กดอนุญาตแจ้งเตือนเพื่อให้ระบบส่งเสียงเมื่อถึงเวลาเรียน</span>
+            </div>
+            <button onclick="toggleNotifications()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-xl text-xs transition shrink-0">เปิดสิทธิ์</button>
+        </div>
+
+        <!-- แถบเลือกวัน & สลับมุมมอง (แสดงชัดเจนบนมือถือ เพื่อให้เต็มจอพอดี 100%) -->
+        <div class="flex items-center justify-between gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+            <!-- ปุ่มเลือกวัน (สำหรับโหมดรายวันบนมือถือ) -->
+            <div id="mobileDayTabs" class="flex-1 grid grid-cols-5 gap-1">
+                <button onclick="selectMobileDay(1)" data-day="1" class="day-tab py-2 rounded-xl text-xs font-semibold transition text-center">จันทร์</button>
+                <button onclick="selectMobileDay(2)" data-day="2" class="day-tab py-2 rounded-xl text-xs font-semibold transition text-center">อังคาร</button>
+                <button onclick="selectMobileDay(3)" data-day="3" class="day-tab py-2 rounded-xl text-xs font-semibold transition text-center">พุธ</button>
+                <button onclick="selectMobileDay(4)" data-day="4" class="day-tab py-2 rounded-xl text-xs font-semibold transition text-center">พฤหัสฯ</button>
+                <button onclick="selectMobileDay(5)" data-day="5" class="day-tab py-2 rounded-xl text-xs font-semibold transition text-center">ศุกร์</button>
+            </div>
+
+            <!-- ปุ่มสลับโหมด รายวัน / รวมทั้งสัปดาห์ -->
+            <button onclick="toggleViewMode()" id="viewModeBtn" title="สลับมุมมองตาราง" class="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium flex items-center gap-1 shrink-0">
+                <i data-lucide="columns" class="w-3.5 h-3.5"></i>
+                <span id="viewModeText" class="hidden sm:inline">ทั้งสัปดาห์</span>
+            </button>
+        </div>
+
+        <!-- Schedule Grid Display -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-lg shadow-slate-200/40 dark:shadow-none border border-slate-200/80 dark:border-slate-700/80 overflow-hidden w-full flex-1">
+            <div id="scrollWrapper" class="w-full p-3 sm:p-6">
+                <!-- Grid Days Header -->
+                <div id="gridHeader" class="grid border-b border-slate-100 dark:border-slate-700/80 pb-3 mb-2 font-semibold text-xs sm:text-sm text-slate-400 text-center">
+                    <!-- Rendered by JS -->
+                </div>
+
+                <!-- Schedule Area Container -->
+                <div id="gridContainer" class="relative w-full">
+                    <!-- Column Container Rendered by JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: ตั้งค่าเสียงแจ้งเตือน -->
+    <div id="soundModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-700 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                <h3 class="text-base font-bold flex items-center gap-2">
+                    <i data-lucide="music" class="w-5 h-5 text-brand-500"></i>
+                    ตั้งค่าเสียงแจ้งเตือน
+                </h3>
+                <button onclick="closeSoundModal()" class="text-slate-400 hover:text-slate-600 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-2">เลือกเสียงเตือนที่มีในระบบ:</label>
+                    <select id="soundPresetSelect" onchange="changeSoundPreset()" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-brand-500">
+                        <option value="beep">Classic Beep (เสียงบี๊บมาตรฐาน)</option>
+                        <option value="alarm">Digital Alarm (นาฬิกาปลุกดิจิทัล)</option>
+                        <option value="chime">Gentle Chime (กระดิ่งนุ่มนวล)</option>
+                        <option value="custom">เสียงส่วนตัวที่อัปโหลด (Custom Audio)</option>
+                    </select>
+                </div>
+
+                <div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">อัปโหลดไฟล์เสียงส่วนตัว (.mp3, .wav):</label>
+                    <input type="file" id="audioFileInput" accept="audio/*" onchange="handleAudioUpload(event)" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer">
+                    <p id="customAudioName" class="text-xs text-emerald-500 mt-2 font-medium hidden flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                        <span id="customFileNameText"></span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="playAlertSound()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+                    <i data-lucide="volume-2" class="w-4 h-4 text-brand-500"></i>
+                    <span>ทดสอบเสียง</span>
+                </button>
+                <button onclick="closeSoundModal()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-brand-500/20">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: เพิ่ม/แก้ไขวิชาเรียน -->
+    <div id="subjectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-700 space-y-4 max-h-[90dvh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                <h3 id="modalTitle" class="text-base font-bold">เพิ่มวิชาเรียนใหม่</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <form id="subjectForm" onsubmit="saveSubject(event)" class="space-y-3">
+                <input type="hidden" id="subjectId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อวิชา / รหัสวิชา</label>
+                    <input type="text" id="subjectName" required class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-500" placeholder="เช่น CS101 การเขียนโปรแกรม">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">วันในสัปดาห์</label>
+                        <select id="subjectDay" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-brand-500">
+                            <option value="1">วันจันทร์</option>
+                            <option value="2">วันอังคาร</option>
+                            <option value="3">วันพุธ</option>
+                            <option value="4">วันพฤหัสบดี</option>
+                            <option value="5">วันศุกร์</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ห้องเรียน</label>
+                        <input type="text" id="subjectRoom" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-500" placeholder="เช่น Lab 1 / 304">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">เวลาเริ่ม</label>
+                        <input type="time" id="startTime" required class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">เวลาสิ้นสุด</label>
+                        <input type="time" id="endTime" required class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">อาจารย์ผู้สอน</label>
+                    <input type="text" id="subjectTeacher" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-500" placeholder="เช่น ดร.วิชัย">
+                </div>
+
+                <!-- Palette เลือกสีวิชา -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">สีการ์ดวิชา</label>
+                    <div class="flex space-x-2.5" id="colorPalette">
+                        <button type="button" onclick="selectColor('#3b82f6')" data-color="#3b82f6" class="color-btn w-8 h-8 rounded-full bg-blue-500 ring-2 ring-offset-2 ring-blue-500 transition"></button>
+                        <button type="button" onclick="selectColor('#10b981')" data-color="#10b981" class="color-btn w-8 h-8 rounded-full bg-emerald-500 transition"></button>
+                        <button type="button" onclick="selectColor('#f59e0b')" data-color="#f59e0b" class="color-btn w-8 h-8 rounded-full bg-amber-500 transition"></button>
+                        <button type="button" onclick="selectColor('#8b5cf6')" data-color="#8b5cf6" class="color-btn w-8 h-8 rounded-full bg-purple-500 transition"></button>
+                        <button type="button" onclick="selectColor('#ec4899')" data-color="#ec4899" class="color-btn w-8 h-8 rounded-full bg-pink-500 transition"></button>
+                    </div>
+                    <input type="hidden" id="selectedColor" value="#3b82f6">
+                </div>
+
+                <div class="flex justify-between items-center pt-4">
+                    <button type="button" id="deleteBtn" onclick="deleteSubject()" class="hidden px-3.5 py-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl text-xs font-semibold transition">ลบวิชานี้</button>
+                    <div class="flex space-x-2 ml-auto">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold">ยกเลิก</button>
+                        <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-500/20">บันทึก</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <audio id="customAudioPlayer" class="hidden"></audio>
+
+    <script>
+        let subjects = JSON.parse(localStorage.getItem('schedule_subjects')) || [];
+        let notifEnabled = false;
+        let selectedSoundType = localStorage.getItem('sound_preset') || 'beep';
+        let customAudioData = localStorage.getItem('custom_audio_base64') || null;
+        let notifiedCache = new Set();
+
+        // ตรวจสอบขนาดหน้าจอเริ่มต้น (ถ้าเปิดบนมือถือ ให้ใช้โหมดรายวันเต็มจออัตโนมัติ)
+        let isMobileView = window.innerWidth < 768;
+        let currentDay = new Date().getDay();
+        let selectedDay = (currentDay >= 1 && currentDay <= 5) ? currentDay : 1;
+
+        const dayNames = {
+            1: { name: 'วันจันทร์', dot: 'bg-amber-400' },
+            2: { name: 'วันอังคาร', dot: 'bg-pink-400' },
+            3: { name: 'วันพุธ', dot: 'bg-emerald-400' },
+            4: { name: 'วันพฤหัสบดี', dot: 'bg-orange-400' },
+            5: { name: 'วันศุกร์', dot: 'bg-blue-400' }
+        };
+
+        const dayColorGradients = {
+            '#3b82f6': 'from-blue-500 to-indigo-600',
+            '#10b981': 'from-emerald-500 to-teal-600',
+            '#f59e0b': 'from-amber-500 to-orange-600',
+            '#8b5cf6': 'from-purple-500 to-violet-600',
+            '#ec4899': 'from-pink-500 to-rose-600'
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            updateDayTabsUI();
+            renderScheduleGrid();
+            checkNotificationPermission();
+
+            if (customAudioData) {
+                document.getElementById('customAudioName').classList.remove('hidden');
+                document.getElementById('customFileNameText').innerText = 'มีไฟล์เสียงส่วนตัวแล้ว';
+            }
+            document.getElementById('soundPresetSelect').value = selectedSoundType;
+
+            setInterval(checkScheduleNotifications, 5000);
+        });
+
+        // เลือกวันบนแถบมือถือ
+        function selectMobileDay(day) {
+            selectedDay = day;
+            isMobileView = true;
+            updateDayTabsUI();
+            renderScheduleGrid();
+        }
+
+        // สลับโหมด รายวัน (เต็มจอมือถือ) กับ รวมทั้งสัปดาห์ (5 วัน)
+        function toggleViewMode() {
+            isMobileView = !isMobileView;
+            updateDayTabsUI();
+            renderScheduleGrid();
+        }
+
+        function updateDayTabsUI() {
+            const tabs = document.querySelectorAll('.day-tab');
+            tabs.forEach(btn => {
+                const d = parseInt(btn.getAttribute('data-day'));
+                if (isMobileView && d === selectedDay) {
+                    btn.className = 'day-tab py-2 rounded-xl text-xs font-bold transition text-center bg-brand-600 text-white shadow-sm';
+                } else {
+                    btn.className = 'day-tab py-2 rounded-xl text-xs font-medium transition text-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700';
+                }
+            });
+
+            const modeText = document.getElementById('viewModeText');
+            if (modeText) {
+                modeText.innerText = isMobileView ? 'ดูทั้งสัปดาห์' : 'ดูรายวัน';
+            }
+        }
+
+        // Render ตารางเรียน (ปรับอัตโนมัติตามโหมดมือถือเต็มจอ หรือ 5 วัน)
+        function renderScheduleGrid() {
+            const header = document.getElementById('gridHeader');
+            const container = document.getElementById('gridContainer');
+            const scrollWrapper = document.getElementById('scrollWrapper');
+            
+            header.innerHTML = '';
+            container.innerHTML = '';
+
+            const daysToRender = isMobileView ? [selectedDay] : [1, 2, 3, 4, 5];
+
+            if (isMobileView) {
+                scrollWrapper.classList.remove('overflow-x-auto');
+                header.className = 'grid schedule-grid-mobile border-b border-slate-100 dark:border-slate-700/80 pb-3 mb-2 font-semibold text-xs text-slate-400 text-center';
+                container.className = 'relative w-full';
+            } else {
+                scrollWrapper.classList.add('overflow-x-auto');
+                header.className = 'grid schedule-grid-desktop min-w-[700px] border-b border-slate-100 dark:border-slate-700/80 pb-3 mb-2 font-semibold text-xs sm:text-sm text-slate-400 text-center';
+                container.className = 'relative min-w-[700px]';
+            }
+
+            // หัวคอลัมน์เวลา
+            const timeHead = document.createElement('div');
+            timeHead.className = 'text-left font-normal text-slate-400';
+            timeHead.innerText = 'เวลา';
+            header.appendChild(timeHead);
+
+            // หัวคอลัมน์วัน
+            daysToRender.forEach(d => {
+                const dayHead = document.createElement('div');
+                dayHead.className = 'flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-200';
+                dayHead.innerHTML = `<span class="w-2 h-2 rounded-full ${dayNames[d].dot}"></span>${dayNames[d].name}`;
+                header.appendChild(dayHead);
+            });
+
+            const startHour = 8;
+            const endHour = 18;
+            const hourHeight = isMobileView ? 72 : 80;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = isMobileView ? 'grid schedule-grid-mobile relative w-full' : 'grid schedule-grid-desktop relative w-full';
+
+            // คอลัมน์เวลาฝั่งซ้าย
+            const timeCol = document.createElement('div');
+            timeCol.className = 'flex flex-col text-[11px] sm:text-xs font-medium text-slate-400 border-r border-slate-100 dark:border-slate-700/80 pr-2';
+            for (let h = startHour; h < endHour; h++) {
+                const timeCell = document.createElement('div');
+                timeCell.style.height = `${hourHeight}px`;
+                timeCell.innerText = `${String(h).padStart(2, '0')}:00`;
+                timeCol.appendChild(timeCell);
+            }
+            wrapper.appendChild(timeCol);
+
+            const searchKeyword = (document.getElementById('searchInput')?.value || '').toLowerCase();
+
+            // คอลัมน์วิชาเรียน
+            daysToRender.forEach(day => {
+                const dayCol = document.createElement('div');
+                dayCol.className = 'relative border-r last:border-r-0 border-slate-100 dark:border-slate-700/50 min-h-full';
+
+                for (let h = startHour; h < endHour; h++) {
+                    const line = document.createElement('div');
+                    line.className = 'border-b border-slate-100 dark:border-slate-700/40 w-full';
+                    line.style.height = `${hourHeight}px`;
+                    dayCol.appendChild(line);
+                }
+
+                const daySubjects = subjects.filter(s => {
+                    const isDay = parseInt(s.day) === day;
+                    const matchesSearch = !searchKeyword ||
+                        (s.name || '').toLowerCase().includes(searchKeyword) ||
+                        (s.room || '').toLowerCase().includes(searchKeyword) ||
+                        (s.teacher || '').toLowerCase().includes(searchKeyword);
+                    return isDay && matchesSearch;
+                });
+
+                daySubjects.forEach(sub => {
+                    const startMin = timeToMinutes(sub.startTime);
+                    const endMin = timeToMinutes(sub.endTime);
+                    const gridStartMin = startHour * 60;
+
+                    const topPx = ((startMin - gridStartMin) / 60) * hourHeight;
+                    const heightPx = Math.max(((endMin - startMin) / 60) * hourHeight, 44);
+
+                    const cardColor = sub.color || '#3b82f6';
+                    const gradientClass = dayColorGradients[cardColor] || 'from-brand-600 to-indigo-600';
+
+                    const card = document.createElement('div');
+                    card.className = `absolute left-1.5 right-1.5 p-2.5 sm:p-3 rounded-2xl text-white shadow-md overflow-hidden flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all bg-gradient-to-br ${gradientClass}`;
+                    card.style.top = `${topPx}px`;
+                    card.style.height = `${heightPx}px`;
+                    card.onclick = () => editSubject(sub.id);
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex items-center justify-between opacity-95 mb-0.5">
+                                <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm">${sub.startTime} - ${sub.endTime}</span>
+                            </div>
+                            <div class="font-bold text-xs sm:text-sm leading-tight truncate">${escapeHtml(sub.name)}</div>
+                        </div>
+                        <div class="text-[11px] opacity-90 flex justify-between items-center pt-1 border-t border-white/20">
+                            <span class="truncate">📍 ${escapeHtml(sub.room || '-')}</span>
+                            <span class="truncate ml-2">👤 ${escapeHtml(sub.teacher || '-')}</span>
+                        </div>
+                    `;
+                    dayCol.appendChild(card);
+                });
+
+                wrapper.appendChild(dayCol);
+            });
+
+            container.appendChild(wrapper);
+        }
+
+        // ตรวจสอบเวลาเตือน
+        function checkScheduleNotifications() {
+            if (!notifEnabled) return;
+
+            const now = new Date();
+            const cDay = now.getDay();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            subjects.forEach(sub => {
+                if (parseInt(sub.day) !== cDay) return;
+
+                const startMin = timeToMinutes(sub.startTime);
+                const advance = parseInt(document.getElementById('notifAdvanceSelect').value);
+                const targetMin = startMin - advance;
+
+                if (currentMinutes === targetMin) {
+                    const cacheKey = `${sub.id}_${now.toDateString()}_${advance}`;
+                    if (!notifiedCache.has(cacheKey)) {
+                        notifiedCache.add(cacheKey);
+                        triggerNotification(sub, advance);
+                    }
+                }
+            });
+        }
+
+        function triggerNotification(sub, advance) {
+            const titleText = advance === 0 ? `⏰ ถึงเวลาเรียนวิชา: ${sub.name}` : `🔔 แจ้งเตือนล่วงหน้า ${advance} นาที: ${sub.name}`;
+            const bodyText = `เวลา: ${sub.startTime} - ${sub.endTime} น. | ห้อง: ${sub.room || '-'}`;
+
+            playAlertSound();
+
+            if ('vibrate' in navigator) {
+                navigator.vibrate([500, 200, 500, 200, 500]);
+            }
+
+            if (Notification.permission === 'granted') {
+                new Notification(titleText, {
+                    body: bodyText,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/3239/3239952.png'
+                });
+            } else {
+                alert(`${titleText}\n${bodyText}`);
+            }
+        }
+
+        function playAlertSound() {
+            if (selectedSoundType === 'custom' && customAudioData) {
+                const player = document.getElementById('customAudioPlayer');
+                player.src = customAudioData;
+                player.play().catch(e => console.log('Autoplay blocked', e));
+                return;
+            }
+
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (selectedSoundType === 'alarm') {
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            } else if (selectedSoundType === 'chime') {
+                osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.4);
+            } else {
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            }
+        }
+
+        function handleAudioUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                customAudioData = e.target.result;
+                localStorage.setItem('custom_audio_base64', customAudioData);
+                document.getElementById('customAudioName').classList.remove('hidden');
+                document.getElementById('customFileNameText').innerText = file.name;
+                document.getElementById('soundPresetSelect').value = 'custom';
+                selectedSoundType = 'custom';
+                localStorage.setItem('sound_preset', 'custom');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function toggleNotifications() {
+            if (!('Notification' in window)) {
+                alert('เบราว์เซอร์นี้ไม่รองรับระบบแจ้งเตือน');
+                return;
+            }
+
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    notifEnabled = true;
+                    document.getElementById('notifText').innerText = 'เปิดแจ้งเตือนอยู่';
+                    document.getElementById('notifBtn').classList.add('bg-emerald-100', 'text-emerald-700');
+                    document.getElementById('notifBanner').classList.add('hidden');
+                    playAlertSound();
+                } else {
+                    alert('กรุณาเปิดสิทธิ์แจ้งเตือนในการตั้งค่าเบราว์เซอร์');
+                }
+            });
+        }
+
+        function checkNotificationPermission() {
+            if (window.Notification && Notification.permission === 'granted') {
+                notifEnabled = true;
+                document.getElementById('notifText').innerText = 'เปิดแจ้งเตือนอยู่';
+                document.getElementById('notifBtn').classList.add('bg-emerald-100', 'text-emerald-700');
+            } else {
+                document.getElementById('notifBanner').classList.remove('hidden');
+            }
+        }
+
+        function openModal() {
+            document.getElementById('subjectForm').reset();
+            document.getElementById('subjectId').value = '';
+            document.getElementById('subjectDay').value = selectedDay;
+            document.getElementById('modalTitle').innerText = 'เพิ่มวิชาเรียนใหม่';
+            document.getElementById('deleteBtn').classList.add('hidden');
+            selectColor('#3b82f6');
+            document.getElementById('subjectModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('subjectModal').classList.add('hidden'); }
+        function openSoundModal() { document.getElementById('soundModal').classList.remove('hidden'); }
+        function closeSoundModal() { document.getElementById('soundModal').classList.add('hidden'); }
+        function changeSoundPreset() {
+            selectedSoundType = document.getElementById('soundPresetSelect').value;
+            localStorage.setItem('sound_preset', selectedSoundType);
+        }
+
+        function selectColor(color) {
+            document.getElementById('selectedColor').value = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                if (btn.getAttribute('data-color') === color) {
+                    btn.classList.add('ring-2', 'ring-offset-2');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-offset-2');
+                }
+            });
+        }
+
+        function saveSubject(e) {
+            e.preventDefault();
+            const id = document.getElementById('subjectId').value;
+            const dayVal = document.getElementById('subjectDay').value;
+            const subData = {
+                id: id || 'sub_' + Date.now(),
+                name: document.getElementById('subjectName').value,
+                day: dayVal,
+                room: document.getElementById('subjectRoom').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                teacher: document.getElementById('subjectTeacher').value,
+                color: document.getElementById('selectedColor').value
+            };
+
+            if (id) {
+                subjects = subjects.map(s => s.id === id ? subData : s);
+            } else {
+                subjects.push(subData);
+            }
+
+            localStorage.setItem('schedule_subjects', JSON.stringify(subjects));
+            selectedDay = parseInt(dayVal);
+            updateDayTabsUI();
+            closeModal();
+            renderScheduleGrid();
+        }
+
+        function editSubject(id) {
+            const sub = subjects.find(s => s.id === id);
+            if (!sub) return;
+
+            document.getElementById('subjectId').value = sub.id;
+            document.getElementById('subjectName').value = sub.name;
+            document.getElementById('subjectDay').value = sub.day;
+            document.getElementById('subjectRoom').value = sub.room || '';
+            document.getElementById('startTime').value = sub.startTime;
+            document.getElementById('endTime').value = sub.endTime;
+            document.getElementById('subjectTeacher').value = sub.teacher || '';
+            selectColor(sub.color || '#3b82f6');
+
+            document.getElementById('modalTitle').innerText = 'แก้ไขวิชาเรียน';
+            document.getElementById('deleteBtn').classList.remove('hidden');
+            document.getElementById('subjectModal').classList.remove('hidden');
+        }
+
+        function deleteSubject() {
+            const id = document.getElementById('subjectId').value;
+            if (id && confirm('คุณต้องการลบวิชาเรียนนี้ใช่หรือไม่?')) {
+                subjects = subjects.filter(s => s.id !== id);
+                localStorage.setItem('schedule_subjects', JSON.stringify(subjects));
+                closeModal();
+                renderScheduleGrid();
+            }
+        }
+
+        function handleSearch() { renderScheduleGrid(); }
+        function updateNotifSettings() {}
+
+        function timeToMinutes(t) {
+            const [h, m] = (t || '00:00').split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function escapeHtml(text) {
+            return (text || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+    </script>
+</body>
+</html>
